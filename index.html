@@ -224,6 +224,7 @@
             if (this.username && this.repoName) {
               this.commits = null;
               this.loading = true;
+              this.pageNumber = 1;
               return true;
             }
             return false;
