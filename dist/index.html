@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+
+    <style>
+      #app {
+        font-family: "Helvetica", Arial, sans-serif;
+      }
+      a {
+        text-decoration: none;
+        color: #f66;
+      }
+      li {
+        line-height: 1.5em;
+        margin-bottom: 20px;
+      }
+      .author,
+      .date {
+        font-weight: bold;
+      }
+      .author > a {
+        color: blueviolet;
+      }
+      .message {
+        font-style: italic;
+      }
+      .error {
+        color: red;
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <h1>Latest Vue.js Commits</h1>
+
+      <template v-for="branch in branches">
+        <input
+          type="radio"
+          name="branch"
+          :id="branch"
+          :value="branch"
+          v-model="currentBranch"
+        />
+        <label :for="branch">{{ branch }}</label>
+      </template>
+
+      <p>vuejs/vue@{{ currentBranch }}</p>
+
+      <p v-if="error" class="error">Something went wrong!</p>
+
+      <ul>
+        <li v-for="(record, key) in commits" :key="key">
+          <a :href="record.html_url" target="_blank">{{
+            slicedSha(record.sha)
+          }}</a>
+          - <span class="message">{{ record.commit.message | truncate }}</span>
+          <br />
+          by
+          <span class="author"
+            ><a :href="record.author.html_url">{{
+              record.commit.author.name
+            }}</a></span
+          >
+          at
+          <span class="date">{{ record.commit.author.date | formatDate }}</span>
+        </li>
+      </ul>
+
+      <div v-if="! loading">
+        <button :disabled="!isPrev()" @click="showPrev()">Previous</button>
+        <span>{{ pageInfo() }}</span>
+        <button @click="showNext()">Next</button>
+      </div>
+    </div>
+
+    <script>
+      var app = new Vue({
+        el: "#app",
+
+        data: {
+          currentBranch: "master",
+          commits: null,
+          branches: ["master", "dev"],
+          loading: true,
+          error: false,
+          pageNumber: 1
+        },
+
+        filters: {
+          formatDate(date) {
+            return date.replace(/T|Z/g, " ");
+          },
+          truncate(message) {
+            var newLine = message.indexOf("\n");
+            return newLine > 0 ? message.slice(0, newLine) : message;
+          }
+        },
+
+        watch: {
+          currentBranch: "fetchData"
+        },
+
+        methods: {
+          fetchData() {
+            axios
+              .get(
+                "https://api.github.com/repos/vuejs/vue/commits?" +
+                  "page=" +
+                  this.pageNumber +
+                  "&per_page=5&sha=" +
+                  this.currentBranch
+              )
+              .then(response => {
+                //console.log(response);
+                this.commits = response.data;
+              })
+              .catch(e => {
+                this.error = true;
+              })
+              .finally(() => {
+                if (!this.error && this.loading) {
+                  this.loading = false;
+                }
+              });
+          },
+          slicedSha(sha) {
+            return sha.slice(0, 7);
+          },
+          pageInfo() {
+            val = this.pageNumber * 5;
+            return (val - 4).toString() + " - " + val.toString();
+          },
+          showNext() {
+            this.pageNumber += 1;
+            this.fetchData();
+          },
+          showPrev() {
+            if (this.isPrev()) {
+              this.pageNumber -= 1;
+              this.fetchData();
+            }
+          },
+          isPrev() {
+            return this.pageNumber > 1;
+          }
+        },
+        created() {
+          this.fetchData();
+        }
+      });
+    </script>
+  </body>
+</html>
